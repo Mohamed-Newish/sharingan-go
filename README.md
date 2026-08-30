@@ -13,10 +13,6 @@ tested. Most pipeline *phases* (`probe`, `ports`, `screenshots`, `crawl`,
 `internal/active/active.go`. `crtsh` in passive mode is fully working as
 a reference implementation of the pattern the other sources will follow.
 
-Every run prints a Sharingan-eye banner (truecolor Unicode half-blocks —
-disable with `NO_COLOR=1` or `SHARINGAN_NO_BANNER=1`; it never prints
-when output isn't a terminal, e.g. piped or redirected).
-
 ## Two modes, one hard boundary
 
 ```
