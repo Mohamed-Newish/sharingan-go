@@ -61,7 +61,7 @@ just gets skipped with a clear message, nothing crashes:
 | [naabu](https://github.com/projectdiscovery/naabu) | `ports`, `origin` | ✅ tested |
 | [katana](https://github.com/projectdiscovery/katana) | `crawl` | ✅ tested (real crawl against a live target) |
 | [wafw00f](https://github.com/EnableSecurity/wafw00f) | `--waf-deep` | ✅ tested |
-| [asnmap](https://github.com/projectdiscovery/asnmap) | `origin` | ⚠️ flags verified against `-h`, but the tool itself currently can't run non-interactively — see note below |
+| [asnmap](https://github.com/projectdiscovery/asnmap) | `origin` | ✅ tested — see note below on one-time setup |
 | [jsluice](https://github.com/BishopFox/jsluice) | `jsintel` (endpoints + secrets) | ✅ tested — real schema verified (`{"kind":"AWSAccessKey","data":{"key":"..."}}`, field name varies per kind) |
 | [LinkFinder](https://github.com/GerbenJavado/LinkFinder) | `jsintel` (endpoints) | ✅ tested (own venv — see below) |
 | [`kh`](https://github.com/audibleblink/kh) | `jsintel` (secret validation) | ✅ tested — see note below |
@@ -74,7 +74,7 @@ verification, and `isolate` — no external tool needed.
 
 **KeyHack isn't what the name suggests.** [`streaak/keyhacks`](https://github.com/streaak/keyhacks) (note the *s*) is a markdown cookbook of `curl` recipes for validating leaked keys by hand — there's no `keyhack` binary. The actual executable used here is [`audibleblink/kh`](https://github.com/audibleblink/kh), which implements 7 of those recipes as a real CLI (`kh <service> <token>`, exit 0 + prints the token if valid). Install it as `keyhack` on `PATH` (`go build -o keyhack .` from that repo). Coverage is narrow — `github-token`, `github-oauth`, `slack-token`, `mailgun`, `twitter`, `twitter-bearer`, `discord` — jsluice's `kind` field is mapped to these by substring match in `keyHackService()`; anything else is left an unverified candidate rather than guessed at.
 
-**asnmap currently can't run non-interactively.** Recent versions prompt for a ProjectDiscovery Cloud Platform API key on first use, reading directly from `/dev/tty` — this fails in any environment without a real controlling terminal (CI, containers, this dev session) with `Could not read input from terminal`, and doesn't respect `-auth=false`, the config file's `auth: false`, or a `PDCP_API_KEY` env var. This is a currently-open upstream issue ([`projectdiscovery/utils#348`](https://github.com/projectdiscovery/utils/issues/348)), not something wrong on our end. **Fix once, in a real terminal you control:** run `asnmap -d anything` yourself interactively — either sign up free at https://cloud.projectdiscovery.io and paste the key, or type `exit` at the prompt to skip cloud auth — and it should be cached for future non-interactive runs, including through `sharingan origin`.
+**asnmap needs one-time interactive setup before it'll run non-interactively.** Recent versions prompt for a ProjectDiscovery Cloud Platform API key on first use, reading directly from `/dev/tty` — this fails with `Could not read input from terminal` in any environment without a real controlling terminal (CI, containers, an agent's sandboxed shell), and doesn't respect `-auth=false`, the config file's `auth: false`, or a `PDCP_API_KEY` env var (a currently-open upstream issue, [`projectdiscovery/utils#348`](https://github.com/projectdiscovery/utils/issues/348)). **Fix once, in an actual terminal window** (not a piped/captured shell): run `asnmap -d anything`, sign up free at https://cloud.projectdiscovery.io, and paste the key in when prompted. It's saved to `~/.pdcp/credentials.yaml` — shared across every ProjectDiscovery tool — and every future run, including through `sharingan origin`, works non-interactively from then on.
 
 ## Quickstart
 
@@ -352,10 +352,15 @@ scope) to test.
 1. Wire `screenshots`, `wordlist`, `sqli`, `xss` — the remaining stub
    phases. No `fuzz` phase — see the "no blind content-discovery" note
    above.
-2. Verify `origin`'s naabu-CIDR-sweep + TLS-verify path against a real
-   target once `asnmap`'s interactive-auth issue is resolved on your
-   end (see the install table above) — `origin`'s Go code itself is
-   otherwise complete, just untested past the asnmap step.
+2. `asnmap` is fixed and working now (see the install table above);
+   `filterCIDRsBySize` and `verifyOriginTLS` have real unit tests
+   (`internal/origin/origin_test.go`). The one piece still untested is
+   `origin`'s full naabu-CIDR-sweep against a real target's *dedicated*
+   infra — `example.com`'s ASN resolves entirely to Cloudflare's shared
+   CDN ranges (which is exactly the case `--confirm-scope` exists to
+   catch), so there was nothing safe to sweep for a full run. Needs a
+   target whose ASN is actually its own, not a shared CDN/cloud
+   provider's.
 3. Thread `internal/config`'s API keys into the
    `securitytrails`/`censys`/`shodan`/`github` passive sources.
 4. Swap `stealth.Client`'s transport for a real `utls`-based one so
