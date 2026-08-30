@@ -9,8 +9,19 @@ of hammering it at a fixed rate until it starts blocking.
 **Status: early / actively developed.** The CLI, safety rails (scope
 guard, dry-run, circuit breaker), and output layout are implemented and
 tested. `probe`, `ports`, `crawl`, and `jsintel` are wired to real tools
-and tested end-to-end; `screenshots`, `wordlist`, `fuzz`, `sqli`, `xss`
-are still stubs — see `internal/active/active.go`.
+and tested end-to-end; `screenshots`, `wordlist`, `sqli`, `xss` are
+still stubs — see `internal/active/active.go`.
+
+**No blind content-discovery phase, on purpose.** Sweeping a wordlist
+against every host is exactly the runs-for-days-and-gets-blocked
+failure mode this tool exists to avoid, and an external fuzzer
+(ffuf/feroxbuster) would bypass the stealth engine entirely anyway —
+same problem as any shelled-out tool, it makes its own connections, not
+`cfg.Client`'s. `wordlist` (deriving `paths.txt`/`params.txt` from
+already-fetched URLs) stays — it's free, zero extra requests — but
+actually brute-forcing is left for a deliberate, targeted call against
+a specific location that looks worth it, not an unconditional pipeline
+phase against everything.
 
 ## Four modes
 
@@ -24,8 +35,8 @@ sharingan isolate [flags]   find which request component triggers a block
 `psv` only ever talks to third parties: crt.sh, subfinder/amass in
 passive mode, assetfinder, and — because they query a web archive, not
 the target — waybackurls/gau. `act` is everything that sends the target
-itself a packet: liveness probing, ports, screenshots, crawling,
-fuzzing, SQLi/XSS scanning.
+itself a packet: liveness probing, ports, screenshots, crawling, JS
+analysis, SQLi/XSS scanning.
 
 ## Install
 
@@ -215,7 +226,6 @@ the next pick, round-robin across the rest.
 | `--proxy-pool <file>` | — | file of proxy URLs to rotate egress across on a block — see below, mutually exclusive with `--proxy` |
 | `--confirm-rotation-permitted` | off | required alongside `--proxy-pool` |
 | `--ports <spec>` | `top-1000` | port range for the ports phase |
-| `--wordlist <path>` | — | seed wordlist, merged with the auto-derived one |
 | `--blind-xss <url>` | — | your collector — the `xss` phase refuses to run without one |
 | `--screenshot-tool` | `aquatone` | `aquatone` \| `eyewitness` \| `gowitness` |
 
@@ -241,7 +251,7 @@ the next pick, round-robin across the rest.
 ### Phase vocabulary (`--only`/`--skip`, `act` only)
 
 ```
-probe → ports → screenshots → crawl → jsintel → wordlist → fuzz → sqli → xss
+probe → ports → screenshots → crawl → jsintel → wordlist → sqli → xss
 ```
 
 ## Stealth profiles
@@ -268,8 +278,8 @@ Under `<out>/<target>/`:
 | `ports` | open ports |
 | `urls` | harvested URLs (archive + live crawl) |
 | `auth_urls` | URLs touching auth/password/token flows — worth a manual look |
-| `paths.txt` | derived path wordlist |
-| `params.txt` | derived param-name wordlist |
+| `paths.txt` | derived path wordlist — feed this to `ffuf`/etc. by hand against a specific candidate location; nothing in the pipeline auto-fuzzes with it |
+| `params.txt` | derived param-name wordlist — same: manual input, not auto-consumed |
 | `sqli_candidates` | marker-based SQLi scan leads — verify by hand before calling it a finding |
 | `xss_candidates` | marker-based XSS scan leads — same caveat |
 | `screenshots/` | aquatone/eyewitness/gowitness output |
@@ -333,8 +343,9 @@ scope) to test.
 
 ## Roadmap
 
-1. Wire `screenshots`, `wordlist`, `fuzz`, `sqli`, `xss` — the remaining
-   stub phases.
+1. Wire `screenshots`, `wordlist`, `sqli`, `xss` — the remaining stub
+   phases. No `fuzz` phase — see the "no blind content-discovery" note
+   above.
 2. Verify `katana`/`asnmap`/`jsluice`/`LinkFinder`/`KeyHack` invocations
    against the real tools once installed (written from documented CLI
    usage, not yet tested here — see the install table above).

@@ -32,7 +32,6 @@ func runAct(args []string) int {
 	proxyPool := fs.String("proxy-pool", "", "file of proxy URLs (one per line) to rotate egress IP across on a block")
 	confirmRotation := fs.Bool("confirm-rotation-permitted", false, "required alongside --proxy-pool: you've checked the program's rules of engagement permit IP rotation")
 	ports := fs.String("ports", "top-1000", "port range/list for the port-scan phase")
-	wordlist := fs.String("wordlist", "", "seed wordlist for the fuzz phase, merged with the auto-derived path/param lists")
 	blindXSS := fs.String("blind-xss", "", "your blind-XSS collector URL — the xss phase refuses to run without one")
 	screenshotTool := fs.String("screenshot-tool", "aquatone", "aquatone | eyewitness | gowitness")
 	fs.Parse(args)
@@ -109,7 +108,6 @@ func runAct(args []string) int {
 		Client:         client,
 		Proxy:          *proxy,
 		Ports:          *ports,
-		Wordlist:       *wordlist,
 		BlindXSS:       *blindXSS,
 		ScreenshotTool: *screenshotTool,
 		WAFProbe:       *wafProbe,

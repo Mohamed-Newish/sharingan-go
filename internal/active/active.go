@@ -1,12 +1,23 @@
 // Package active implements sharingan's -act pipeline: liveness
 // probing, ports, screenshots, live crawling, JS analysis, wordlist
-// derivation, and the fuzz/sqli/xss scan stages. Every phase is
-// expected to send its requests through cfg.Client (internal/stealth)
-// — never a bare http.Client — and every target is checked against
+// derivation, and the sqli/xss scan stages. Every phase is expected to
+// send its requests through cfg.Client (internal/stealth) — never a
+// bare http.Client — and every target is checked against
 // cfg.Scope.Allowed() before a single request is built.
 //
-// screenshots, wordlist, fuzz, sqli, and xss are still stubs (TODO) —
-// probe, ports, crawl, and jsintel are wired to real tools.
+// There is deliberately no blind content-discovery ("fuzz") phase —
+// sweeping a wordlist against every host is exactly the runs-for-days,
+// gets-blocked-eventually failure mode this tool exists to avoid, and
+// external fuzzers (ffuf/feroxbuster) would bypass the stealth engine
+// entirely the same way naabu/katana do (their own connections, not
+// cfg.Client's). Brute-forcing belongs only against a specific
+// candidate location once one looks worth it — a deliberate, targeted
+// call, not an unconditional pipeline phase. wordlist stays: it's pure
+// local text-processing of already-fetched urls, zero extra requests,
+// and is exactly what would feed a future targeted tool.
+//
+// screenshots, wordlist, sqli, and xss are still stubs (TODO) — probe,
+// ports, crawl, and jsintel are wired to real tools.
 package active
 
 import (
@@ -26,7 +37,6 @@ type Config struct {
 	Client         *stealth.Client
 	Proxy          string
 	Ports          string
-	Wordlist       string
 	BlindXSS       string
 	ScreenshotTool string
 	WAFProbe       bool
@@ -38,8 +48,9 @@ type Config struct {
 	Verbose        bool
 }
 
-// pipeline is the fixed phase order --only/--skip select from.
-var pipeline = []string{"probe", "ports", "screenshots", "crawl", "jsintel", "wordlist", "fuzz", "sqli", "xss"}
+// pipeline is the fixed phase order --only/--skip select from. No
+// "fuzz" — see the package doc for why.
+var pipeline = []string{"probe", "ports", "screenshots", "crawl", "jsintel", "wordlist", "sqli", "xss"}
 
 func (c Config) wants(phase string) bool {
 	if c.Only != "" {
@@ -107,8 +118,6 @@ func Run(target string, lay *output.Layout, cfg Config) error {
 			err = runJSIntel(target, lay, cfg)
 		case "wordlist":
 			err = fmt.Errorf("TODO: unfurl-equivalent path/param extraction from lay.URLs -> lay.PathWordlist / lay.ParamWordlist")
-		case "fuzz":
-			err = fmt.Errorf("TODO: content discovery using cfg.Wordlist + lay.PathWordlist")
 		case "sqli":
 			err = fmt.Errorf("TODO: marker-based SQLi scan -> lay.SQLiCandidates")
 		case "xss":
