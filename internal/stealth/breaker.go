@@ -1,7 +1,7 @@
 // breaker.go: a circuit breaker that halts a run after too many
 // consecutive blocked responses, rather than continuing to hammer a
-// target that has started blocking — "that's the exact behaviour that
-// gets an IP banned" (breaking-the-wall/ch05_how_wafs_work.html).
+// target that has already started blocking — exactly the behavior that
+// gets an IP banned.
 package stealth
 
 import (

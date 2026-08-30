@@ -1,9 +1,8 @@
 // wafid.go: a lightweight, first-request WAF fingerprinter. Not
 // exhaustive — a first pass so -act can pick a sane per-vendor throttle
-// before running any real scan traffic. Signatures per
-// breaking-the-wall/ch05_how_wafs_work.html and
-// ch06_cloudflare_in_depth.html (Cloudflare/Akamai/Imperva "mature
-// managed rules; expect challenges and rate limits").
+// before running any real scan traffic. Cloudflare, Akamai, and Imperva
+// in particular run mature managed rulesets and are quick to challenge
+// or rate-limit, so they get extra throttling regardless of profile.
 package stealth
 
 import (

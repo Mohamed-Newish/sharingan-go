@@ -1,13 +1,12 @@
 // client.go builds the *http.Client every -act request goes through. It
 // currently uses Go's standard transport with a realistic, matched
 // header set (a UA bundled with the Accept-* headers that actually go
-// with it, not just a random UA string). TLS fingerprint spoofing
-// (JA3/JA4 via utls, so the client doesn't carry Go's default
-// tool-shaped ClientHello — "a default python-requests/Go-http-client
-// User-Agent and a tool-shaped TLS JA3 score you as a bot",
-// breaking-the-wall/ch06_cloudflare_in_depth.html) is the next layer to
-// add here; --ja3 is accepted and validated today but not yet wired to
-// an actual utls transport — see the TODO in NewClient.
+// with it, not just a random UA string). Go's default transport also
+// carries a distinctive TLS ClientHello (JA3/JA4 fingerprint) that's
+// trivially detectable as "not a browser" — spoofing a real Chrome/
+// Firefox fingerprint via utls is the next layer to add here; --ja3 is
+// accepted and validated today but not yet wired to an actual utls
+// transport — see the TODO in NewClient.
 package stealth
 
 import (
@@ -42,9 +41,7 @@ type Client struct {
 // NewClient builds a Client for profile p, presenting the ja3 identity
 // ("chrome" | "firefox" | "off"). Only "chrome"'s header bundle is wired
 // up today; "firefox" and the actual utls JA3/JA4 ClientHello spoofing
-// for either are TODO — tracked as step 3 of the build sequence (see the
-// conversation this scaffold came out of: orchestrator+limiter+breaker
-// first, WAF fingerprinter second, utls client third).
+// for either are TODO.
 func NewClient(p Profile, ja3 string) (*Client, error) {
 	switch ja3 {
 	case "chrome", "firefox", "off", "":

@@ -33,9 +33,9 @@ var Profiles = map[string]Profile{
 		Name: "normal", RatePerSecond: 10, Concurrency: 10, Jitter: 0.3,
 		BreakerLimit: 5, CooldownAfter: time.Minute,
 	},
-	// No holding back — matches the old recon.sh defaults (naabu -rate
-	// 10000, meg -d 1000). Only for programs/agreements that explicitly
-	// tolerate it; you lose the WAF-survival benefit of this whole tool.
+	// No holding back — unthrottled and fully concurrent. Only for
+	// programs/agreements that explicitly tolerate it; you lose the
+	// WAF-survival benefit of this whole tool.
 	"loud": {
 		Name: "loud", RatePerSecond: 0, Concurrency: 50, Jitter: 0,
 		BreakerLimit: 20, CooldownAfter: 10 * time.Second,

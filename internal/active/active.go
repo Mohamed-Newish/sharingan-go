@@ -7,9 +7,8 @@
 //
 // The phase bodies below are stubs (TODO): this package is scaffolding
 // for the orchestration/safety layer — scope guard, WAF-probe-first,
-// --only/--skip/--resume/--dry-run — which is the actual new value over
-// bare recon.sh. Wiring each phase to a real implementation (or a
-// wrapped external tool) is the next round of work.
+// --only/--skip/--resume/--dry-run. Wiring each phase to a real
+// implementation (or a wrapped external tool) is the next round of work.
 package active
 
 import (
@@ -40,9 +39,7 @@ type Config struct {
 	Verbose        bool
 }
 
-// pipeline order matches recon.sh / scanners.sh's phases, so --only and
-// --skip use the same vocabulary a reader of HUNTING_WORKFLOW.md already
-// knows.
+// pipeline is the fixed phase order --only/--skip select from.
 var pipeline = []string{"probe", "ports", "screenshots", "crawl", "wordlist", "fuzz", "sqli", "xss"}
 
 func (c Config) wants(phase string) bool {

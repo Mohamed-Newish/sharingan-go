@@ -1,9 +1,7 @@
 // psv.go implements `sharingan psv`: passive recon only. No source
 // reachable from here may open a connection to the target's own
 // infrastructure — only third-party services (crt.sh, passive DNS,
-// web archives) get touched. See
-// breaking-the-wall/chapters/ch06_cloudflare_in_depth.html and
-// knowledge/notes/recon-and-attack-surface.md §2a.
+// web archives) get touched.
 package cmd
 
 import (

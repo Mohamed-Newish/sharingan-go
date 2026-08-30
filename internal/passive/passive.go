@@ -1,10 +1,10 @@
 // Package passive implements sharingan's -psv sources: everything here
 // queries a third party, never the target itself. crt.sh is implemented
-// natively (a plain HTTPS GET against a public API). The rest currently
-// shell out to the tool your existing recon.sh already uses for it — no
-// reason to reimplement subfinder/amass/waybackurls/gau when they
-// already work well; this package's job is orchestration and dedupe,
-// not replacing best-of-breed tools.
+// natively (a plain HTTPS GET against a public API). The rest shell out
+// to an existing, well-established CLI tool for that source — no reason
+// to reimplement subfinder/amass/waybackurls/gau when they already work
+// well; this package's job is orchestration and dedupe, not replacing
+// best-of-breed tools.
 package passive
 
 import (
@@ -21,9 +21,8 @@ import (
 
 // Run fans out to the requested sources for one target and dedupe-appends
 // every result to lay.Domains (subdomain sources) or lay.URLs (archive
-// sources — wayback/gau/otx are third-party archives, so they belong in
-// passive mode even though the local recon.sh currently runs them
-// alongside the active phases).
+// sources — wayback/gau/otx query a third-party archive, not the
+// target, so they belong in passive mode).
 func Run(target string, lay *output.Layout, sources string, dryRun, verbose bool) error {
 	domains, err := store.Open(lay.Domains)
 	if err != nil {

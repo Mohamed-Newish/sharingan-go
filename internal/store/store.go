@@ -1,8 +1,8 @@
-// Package store implements the workspace's "always append with anew"
-// convention as a library: dedupe-append lines to an artifact file
-// (domains, hosts, urls, ports, ...) without ever truncating or
-// reordering what's already there. See HUNTING_WORKFLOW.md's core
-// conventions.
+// Package store implements "always append, never overwrite" as a
+// library: dedupe-append lines to an artifact file (domains, hosts,
+// urls, ports, ...) without ever truncating or reordering what's
+// already there — the same discipline tools like anew enforce for
+// shell pipelines.
 package store
 
 import (

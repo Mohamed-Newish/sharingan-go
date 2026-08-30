@@ -1,8 +1,7 @@
-// Package output defines the on-disk target folder layout, matching
-// HUNTING_WORKFLOW.md's artifact conventions exactly so a sharingan run
-// slots into the existing hand-driven workflow (Burp, manual review)
-// with zero translation — the same file names your bash pipeline and
-// this tool both read and append to.
+// Package output defines the on-disk target folder layout: one
+// plain-text artifact file per data type (domains, hosts, ports, urls,
+// ...), so results stay easy to grep, diff, and feed into other tools —
+// or review by hand in Burp — without any translation step.
 package output
 
 import (
