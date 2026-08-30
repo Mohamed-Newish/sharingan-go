@@ -106,13 +106,13 @@ func Run(target string, lay *output.Layout, cfg Config) error {
 		case "fuzz":
 			err = fmt.Errorf("TODO: content discovery using cfg.Wordlist + lay.PathWordlist")
 		case "sqli":
-			err = fmt.Errorf("TODO: dsss-equivalent marker-based SQLi scan -> lay.DsssResults")
+			err = fmt.Errorf("TODO: marker-based SQLi scan -> lay.SQLiCandidates")
 		case "xss":
 			if cfg.BlindXSS == "" {
-				err = fmt.Errorf("skipped: --blind-xss not set (no hardcoded default collector — see CLAUDE.md's placeholder-callback note)")
+				err = fmt.Errorf("skipped: --blind-xss not set — no hardcoded default collector; pass your own")
 				break
 			}
-			err = fmt.Errorf("TODO: kxss+dalfox-equivalent scan -> lay.XSSResults")
+			err = fmt.Errorf("TODO: marker-based blind-XSS scan -> lay.XSSCandidates")
 		}
 		if err != nil {
 			fmt.Printf("act: %s: %s: %v\n", target, phase, err)

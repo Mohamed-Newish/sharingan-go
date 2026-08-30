@@ -1,7 +1,7 @@
 // Package scope implements the in-scope allow-list that every outbound
 // request sharingan sends in active mode is checked against before it's
-// ever built. This is the technical enforcement of CLAUDE.md's "confirm
-// a host is in-scope before sending traffic" rule — not just discipline.
+// ever built — a technical guarantee that traffic never leaves for a
+// host outside the authorized scope, not just operator discipline.
 package scope
 
 import (

@@ -14,19 +14,19 @@ import (
 type Layout struct {
 	Root string
 
-	Domains           string // subdomains discovered (passive + active)
-	Hosts             string // confirmed-live hosts
-	Ports             string // open ports
-	URLs              string // harvested URLs (archive + live crawl)
-	ResetPasswordTest string // URLs touching auth/password flows
-	PathWordlist      string // derived path wordlist
-	ParamWordlist     string // derived param-name wordlist
-	DsssResults       string // SQLi scan hits
-	XSSResults        string // XSS scan hits
-	Screenshots       string // dir: aquatone/eyewitness/gowitness output
-	Out               string // dir: meg-style raw response bodies/headers
-	Findings          string // findings.jsonl — structured, for tooling/LLM triage
-	AuditLog          string // sharingan.log — every request sent in -act mode
+	Domains        string // subdomains discovered (passive + active)
+	Hosts          string // confirmed-live hosts
+	Ports          string // open ports
+	URLs           string // harvested URLs (archive + live crawl)
+	AuthURLs       string // URLs touching auth/password/token flows — worth a manual look
+	PathWordlist   string // derived path wordlist
+	ParamWordlist  string // derived param-name wordlist
+	SQLiCandidates string // marker-based SQLi scan leads — verify by hand before calling it a finding
+	XSSCandidates  string // marker-based XSS scan leads — same caveat
+	Screenshots    string // dir: aquatone/eyewitness/gowitness output
+	RawResponses   string // dir: raw response bodies/headers fetched from each host's root path
+	Findings       string // findings.jsonl — structured, for tooling/LLM triage
+	AuditLog       string // sharingan.log — every request sent in -act mode
 }
 
 // New builds the Layout for target under root, creating root/target if
@@ -35,20 +35,20 @@ type Layout struct {
 func New(root, target string) (*Layout, error) {
 	base := filepath.Join(root, target)
 	l := &Layout{
-		Root:              base,
-		Domains:           filepath.Join(base, "domains"),
-		Hosts:             filepath.Join(base, "hosts"),
-		Ports:             filepath.Join(base, "ports"),
-		URLs:              filepath.Join(base, "urls"),
-		ResetPasswordTest: filepath.Join(base, "reset_password_test"),
-		PathWordlist:      filepath.Join(base, "path_wlist"),
-		ParamWordlist:     filepath.Join(base, "param_wlist"),
-		DsssResults:       filepath.Join(base, "dsss_res"),
-		XSSResults:        filepath.Join(base, "xss_res"),
-		Screenshots:       filepath.Join(base, "screenshots"),
-		Out:               filepath.Join(base, "out"),
-		Findings:          filepath.Join(base, "findings.jsonl"),
-		AuditLog:          filepath.Join(base, "sharingan.log"),
+		Root:           base,
+		Domains:        filepath.Join(base, "domains"),
+		Hosts:          filepath.Join(base, "hosts"),
+		Ports:          filepath.Join(base, "ports"),
+		URLs:           filepath.Join(base, "urls"),
+		AuthURLs:       filepath.Join(base, "auth_urls"),
+		PathWordlist:   filepath.Join(base, "paths.txt"),
+		ParamWordlist:  filepath.Join(base, "params.txt"),
+		SQLiCandidates: filepath.Join(base, "sqli_candidates"),
+		XSSCandidates:  filepath.Join(base, "xss_candidates"),
+		Screenshots:    filepath.Join(base, "screenshots"),
+		RawResponses:   filepath.Join(base, "raw_responses"),
+		Findings:       filepath.Join(base, "findings.jsonl"),
+		AuditLog:       filepath.Join(base, "sharingan.log"),
 	}
 	if err := os.MkdirAll(base, 0o755); err != nil {
 		return nil, err

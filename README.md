@@ -163,13 +163,29 @@ managed rulesets, regardless of the chosen profile.
 
 ## Output layout
 
-Under `<out>/<target>/`: `domains`, `hosts`, `ports`, `urls`,
-`reset_password_test`, `path_wlist`, `param_wlist`, `dsss_res`,
-`xss_res`, `screenshots/`, `out/`, plus `findings.jsonl` (structured, for
-downstream tooling) and `sharingan.log` (an audit trail of every request
-sent in `-act` mode — useful as report evidence and as proof of
-scope-compliance). Every artifact is append-only and deduped — re-running
-never loses or reorders prior results.
+Under `<out>/<target>/`:
+
+| File / dir | Holds |
+|---|---|
+| `domains` | subdomains discovered (passive + active) |
+| `hosts` | confirmed-live hosts |
+| `ports` | open ports |
+| `urls` | harvested URLs (archive + live crawl) |
+| `auth_urls` | URLs touching auth/password/token flows — worth a manual look |
+| `paths.txt` | derived path wordlist |
+| `params.txt` | derived param-name wordlist |
+| `sqli_candidates` | marker-based SQLi scan leads — verify by hand before calling it a finding |
+| `xss_candidates` | marker-based XSS scan leads — same caveat |
+| `screenshots/` | aquatone/eyewitness/gowitness output |
+| `raw_responses/` | raw response bodies/headers fetched from each host's root path |
+| `findings.jsonl` | structured findings, for downstream tooling |
+| `sharingan.log` | audit trail of every request sent in `-act` mode — useful as report evidence and proof of scope-compliance |
+
+`sqli_candidates`/`xss_candidates` are deliberately not called
+"findings" — they're marker-based scanner leads that still need manual
+verification, same as any automated scan output. Every artifact is
+append-only and deduped — re-running never loses or reorders prior
+results.
 
 ## Repo layout
 
