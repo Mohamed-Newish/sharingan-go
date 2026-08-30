@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Mohamed-Newish/sharingan-go/internal/banner"
 	"github.com/Mohamed-Newish/sharingan-go/internal/scope"
 )
 
@@ -65,6 +66,9 @@ func (g *Global) Targets() ([]string, error) {
 
 // Run dispatches argv[1] (psv|act) to its subcommand.
 func Run(argv []string) int {
+	if banner.Enabled() {
+		banner.Print(os.Stdout)
+	}
 	if len(argv) < 2 {
 		fmt.Fprint(os.Stderr, usage)
 		return 2
