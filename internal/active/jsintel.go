@@ -10,17 +10,12 @@
 // .map file is actually fetchable, which does need one more request
 // through cfg.Client.
 //
-// NOTE: jsluice, LinkFinder, and KeyHack weren't available to test
-// against at write time. jsluice/LinkFinder invocations are written
-// from their documented CLI usage; the KeyHack integration in
-// particular is best-effort (its exact invocation/output format
-// wasn't verifiable here) — check its actual behavior once installed
-// and adjust runKeyHack accordingly. A wrong guess here fails closed
-// (skipped with a warning), never silently wrong.
+// jsluice, LinkFinder, and KeyHack (via audibleblink/kh — see
+// runKeyHack) are all verified against the real tools, including
+// jsluice's actual secrets JSON schema.
 package active
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -205,42 +200,78 @@ func resolveURL(base, ref string) string {
 }
 
 // runKeyHack tries to validate one jsluice-secrets JSON line against
-// its issuing provider. Best-effort: jsluice's exact field names and
-// KeyHack's exact CLI/output shape weren't verifiable at write time,
-// so this fails closed (returns ok=false) on anything unexpected
-// rather than risk a false "verified."
+// its issuing provider, via audibleblink/kh (the executable
+// implementation of the streaak/keyhacks validation cookbook — kh
+// <service> <token> exits 0 and prints the token if valid, exits 1 and
+// prints nothing otherwise). Verified against the real tool: jsluice's
+// secrets schema is {"kind":"AWSAccessKey","data":{"key":"..."}} — the
+// single string inside "data" is the credential, whatever its field
+// name (it varies per kind: "key", "token", etc., so this reads
+// whichever one is there rather than hardcoding a name). kh only
+// covers 7 services today (github-token, github-oauth, slack-token,
+// mailgun, twitter, twitter-bearer, discord); anything else is left an
+// unverified candidate, not an error.
 func runKeyHack(secretLine string) (value string, ok bool) {
 	if !toolrun.Available("keyhack") {
 		return "", false
 	}
 	var parsed struct {
-		Kind string `json:"kind"`
-		Data struct {
-			Value string `json:"value"`
-			Data  string `json:"data"`
-		} `json:"data"`
+		Kind string                 `json:"kind"`
+		Data map[string]interface{} `json:"data"`
 	}
 	if err := json.Unmarshal([]byte(secretLine), &parsed); err != nil {
 		return "", false
 	}
-	value = parsed.Data.Value
-	if value == "" {
-		value = parsed.Data.Data
+	service := keyHackService(parsed.Kind)
+	if service == "" {
+		return "", false
 	}
-	if value == "" {
+	secretValue := firstStringValue(parsed.Data)
+	if secretValue == "" {
 		return "", false
 	}
 
-	var out bytes.Buffer
-	lines, err := toolrun.Lines("keyhack", []string{parsed.Kind, value}, "")
-	if err != nil {
-		return "", false
-	}
-	out.WriteString(strings.Join(lines, "\n"))
-	positive := strings.Contains(strings.ToLower(out.String()), "valid") ||
-		strings.Contains(strings.ToLower(out.String()), "confirmed")
-	if !positive {
-		return "", false
+	lines, err := toolrun.Lines("keyhack", []string{service, secretValue}, "")
+	if err != nil || len(lines) == 0 {
+		return "", false // nonzero exit or no output = invalid, per kh's own contract
 	}
 	return secretLine, true
+}
+
+// keyHackService maps a jsluice secret "kind" (e.g. "AWSAccessKey",
+// "SlackToken") to the matching kh service command name, by
+// case-insensitive substring — kh's own vocabulary is much smaller
+// than jsluice's detector set, so most kinds intentionally return "".
+func keyHackService(kind string) string {
+	k := strings.ToLower(kind)
+	switch {
+	case strings.Contains(k, "github") && strings.Contains(k, "oauth"):
+		return "github-oauth"
+	case strings.Contains(k, "github"):
+		return "github-token"
+	case strings.Contains(k, "slack"):
+		return "slack-token"
+	case strings.Contains(k, "mailgun"):
+		return "mailgun"
+	case strings.Contains(k, "twitter") && strings.Contains(k, "bearer"):
+		return "twitter-bearer"
+	case strings.Contains(k, "twitter"):
+		return "twitter"
+	case strings.Contains(k, "discord"):
+		return "discord"
+	}
+	return ""
+}
+
+// firstStringValue returns the first string value found in a
+// jsluice-secrets "data" object — a name-agnostic read since the field
+// name varies per kind and jsluice's detectors typically emit exactly
+// one credential string per match.
+func firstStringValue(m map[string]interface{}) string {
+	for _, v := range m {
+		if s, ok := v.(string); ok && s != "" {
+			return s
+		}
+	}
+	return ""
 }

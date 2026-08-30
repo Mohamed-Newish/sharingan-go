@@ -59,16 +59,22 @@ just gets skipped with a clear message, nothing crashes:
 | [waybackurls](https://github.com/tomnomnom/waybackurls), [gau](https://github.com/lc/gau) | `psv` archive sources | ✅ tested |
 | [httprobe](https://github.com/tomnomnom/httprobe) | `probe` | ✅ tested |
 | [naabu](https://github.com/projectdiscovery/naabu) | `ports`, `origin` | ✅ tested |
-| [katana](https://github.com/projectdiscovery/katana) | `crawl` | ⚠️ written from documented flags, not yet tested here |
+| [katana](https://github.com/projectdiscovery/katana) | `crawl` | ✅ tested (real crawl against a live target) |
 | [wafw00f](https://github.com/EnableSecurity/wafw00f) | `--waf-deep` | ✅ tested |
-| [asnmap](https://github.com/projectdiscovery/asnmap) | `origin` | ⚠️ written from documented flags, not yet tested here |
-| [jsluice](https://github.com/BishopFox/jsluice) | `jsintel` (endpoints + secrets) | ⚠️ written from documented flags, not yet tested here |
-| [LinkFinder](https://github.com/GerbenJavado/LinkFinder) | `jsintel` (endpoints) | ⚠️ written from documented flags, not yet tested here |
-| [KeyHack](https://github.com/streaak/keyhack) | `jsintel` (secret validation) | ⚠️ best-effort — exact CLI/output format unverified, fails closed on a mismatch |
+| [asnmap](https://github.com/projectdiscovery/asnmap) | `origin` | ⚠️ flags verified against `-h`, but the tool itself currently can't run non-interactively — see note below |
+| [jsluice](https://github.com/BishopFox/jsluice) | `jsintel` (endpoints + secrets) | ✅ tested — real schema verified (`{"kind":"AWSAccessKey","data":{"key":"..."}}`, field name varies per kind) |
+| [LinkFinder](https://github.com/GerbenJavado/LinkFinder) | `jsintel` (endpoints) | ✅ tested (own venv — see below) |
+| [`kh`](https://github.com/audibleblink/kh) | `jsintel` (secret validation) | ✅ tested — see note below |
 
 `crt.sh` needs nothing extra — it's a plain HTTPS call baked into the
 binary. Same for `origin`'s Shodan cross-reference and TLS-cert
 verification, and `isolate` — no external tool needed.
+
+**LinkFinder** needs its own Python venv (`cd LinkFinder && python3 -m venv venv && ./venv/bin/pip install -r requirements.txt jsbeautifier`), then a tiny shell wrapper named `linkfinder` on `PATH` that execs `venv/bin/python3 linkfinder.py "$@"` — it isn't pip-installable as a standalone command.
+
+**KeyHack isn't what the name suggests.** [`streaak/keyhacks`](https://github.com/streaak/keyhacks) (note the *s*) is a markdown cookbook of `curl` recipes for validating leaked keys by hand — there's no `keyhack` binary. The actual executable used here is [`audibleblink/kh`](https://github.com/audibleblink/kh), which implements 7 of those recipes as a real CLI (`kh <service> <token>`, exit 0 + prints the token if valid). Install it as `keyhack` on `PATH` (`go build -o keyhack .` from that repo). Coverage is narrow — `github-token`, `github-oauth`, `slack-token`, `mailgun`, `twitter`, `twitter-bearer`, `discord` — jsluice's `kind` field is mapped to these by substring match in `keyHackService()`; anything else is left an unverified candidate rather than guessed at.
+
+**asnmap currently can't run non-interactively.** Recent versions prompt for a ProjectDiscovery Cloud Platform API key on first use, reading directly from `/dev/tty` — this fails in any environment without a real controlling terminal (CI, containers, this dev session) with `Could not read input from terminal`, and doesn't respect `-auth=false`, the config file's `auth: false`, or a `PDCP_API_KEY` env var. This is a currently-open upstream issue ([`projectdiscovery/utils#348`](https://github.com/projectdiscovery/utils/issues/348)), not something wrong on our end. **Fix once, in a real terminal you control:** run `asnmap -d anything` yourself interactively — either sign up free at https://cloud.projectdiscovery.io and paste the key, or type `exit` at the prompt to skip cloud auth — and it should be cached for future non-interactive runs, including through `sharingan origin`.
 
 ## Quickstart
 
@@ -346,9 +352,10 @@ scope) to test.
 1. Wire `screenshots`, `wordlist`, `sqli`, `xss` — the remaining stub
    phases. No `fuzz` phase — see the "no blind content-discovery" note
    above.
-2. Verify `katana`/`asnmap`/`jsluice`/`LinkFinder`/`KeyHack` invocations
-   against the real tools once installed (written from documented CLI
-   usage, not yet tested here — see the install table above).
+2. Verify `origin`'s naabu-CIDR-sweep + TLS-verify path against a real
+   target once `asnmap`'s interactive-auth issue is resolved on your
+   end (see the install table above) — `origin`'s Go code itself is
+   otherwise complete, just untested past the asnmap step.
 3. Thread `internal/config`'s API keys into the
    `securitytrails`/`censys`/`shodan`/`github` passive sources.
 4. Swap `stealth.Client`'s transport for a real `utls`-based one so
