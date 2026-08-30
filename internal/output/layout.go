@@ -27,6 +27,15 @@ type Layout struct {
 	RawResponses   string // dir: raw response bodies/headers fetched from each host's root path
 	Findings       string // findings.jsonl — structured, for tooling/LLM triage
 	AuditLog       string // sharingan.log — every request sent in -act mode
+
+	JSDir             string // dir: JS files fetched for local analysis (jsintel phase)
+	JSEndpoints       string // endpoints mined from JS (jsluice urls + LinkFinder)
+	JSSecrets         string // secrets mined from JS (jsluice secrets), pre-validation
+	JSSecretsVerified string // subset of JSSecrets that KeyHack confirmed live
+	Sourcemaps        string // JS files with a sourceMappingURL whose .map was actually fetchable — source disclosure
+
+	WAFFingerprint string // wafw00f -a deep-probe output (--waf-deep only)
+	OriginIPs      string // candidate origin IPs found by the origin subcommand, cert-verified
 }
 
 // New builds the Layout for target under root, creating root/target if
@@ -49,6 +58,15 @@ func New(root, target string) (*Layout, error) {
 		RawResponses:   filepath.Join(base, "raw_responses"),
 		Findings:       filepath.Join(base, "findings.jsonl"),
 		AuditLog:       filepath.Join(base, "sharingan.log"),
+
+		JSDir:             filepath.Join(base, "js"),
+		JSEndpoints:       filepath.Join(base, "js_endpoints"),
+		JSSecrets:         filepath.Join(base, "js_secrets_candidates"),
+		JSSecretsVerified: filepath.Join(base, "js_secrets_verified"),
+		Sourcemaps:        filepath.Join(base, "sourcemaps_found"),
+
+		WAFFingerprint: filepath.Join(base, "waf_fingerprint.json"),
+		OriginIPs:      filepath.Join(base, "origin_ips"),
 	}
 	if err := os.MkdirAll(base, 0o755); err != nil {
 		return nil, err

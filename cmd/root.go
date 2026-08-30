@@ -13,10 +13,12 @@ import (
 const usage = `sharingan — recon/scan orchestrator with a built-in stealth engine
 
 Usage:
-  sharingan psv [flags]   passive recon only — zero packets to the target
-  sharingan act [flags]   active recon/scan — touches the target, stealth engine on
+  sharingan psv     [flags]   passive recon only — zero packets to the target
+  sharingan act     [flags]   active recon/scan — touches the target, stealth engine on
+  sharingan origin  [flags]   find the real origin IP behind a WAF/CDN (opt-in, own scope gate)
+  sharingan isolate [flags]   find which request component triggers a block
 
-Run 'sharingan psv -h' or 'sharingan act -h' for mode-specific flags.
+Run 'sharingan <mode> -h' for mode-specific flags.
 `
 
 // Global holds the flags shared by both psv and act.
@@ -74,6 +76,10 @@ func Run(argv []string) int {
 		return runPsv(argv[2:])
 	case "act":
 		return runAct(argv[2:])
+	case "origin":
+		return runOrigin(argv[2:])
+	case "isolate":
+		return runIsolate(argv[2:])
 	case "-h", "--help", "help":
 		fmt.Print(usage)
 		return 0

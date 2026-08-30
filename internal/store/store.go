@@ -75,3 +75,24 @@ func (f *File) AddAll(lines []string) (added int, err error) {
 // Len reports how many unique lines the file currently holds — used by
 // --resume to decide whether a phase already has output.
 func (f *File) Len() int { return len(f.seen) }
+
+// Lines returns the file's current lines (already deduped, insertion
+// order not preserved — seen is a set). Used by a phase to read a
+// prior phase's output as its own input, e.g. probe reading domains.
+func (f *File) Lines() []string {
+	out := make([]string, 0, len(f.seen))
+	for l := range f.seen {
+		out = append(out, l)
+	}
+	return out
+}
+
+// ReadLines is a convenience wrapper for a phase that only needs to
+// read an artifact file (not append to it): open, grab the lines.
+func ReadLines(path string) ([]string, error) {
+	f, err := Open(path)
+	if err != nil {
+		return nil, err
+	}
+	return f.Lines(), nil
+}

@@ -1,14 +1,12 @@
 // Package active implements sharingan's -act pipeline: liveness
-// probing, ports, screenshots, live crawling, wordlist derivation, and
-// the fuzz/sqli/xss scan stages. Every phase is expected to send its
-// requests through cfg.Client (internal/stealth) — never a bare
-// http.Client — and every target is checked against cfg.Scope.Allowed()
-// before a single request is built.
+// probing, ports, screenshots, live crawling, JS analysis, wordlist
+// derivation, and the fuzz/sqli/xss scan stages. Every phase is
+// expected to send its requests through cfg.Client (internal/stealth)
+// — never a bare http.Client — and every target is checked against
+// cfg.Scope.Allowed() before a single request is built.
 //
-// The phase bodies below are stubs (TODO): this package is scaffolding
-// for the orchestration/safety layer — scope guard, WAF-probe-first,
-// --only/--skip/--resume/--dry-run. Wiring each phase to a real
-// implementation (or a wrapped external tool) is the next round of work.
+// screenshots, wordlist, fuzz, sqli, and xss are still stubs (TODO) —
+// probe, ports, crawl, and jsintel are wired to real tools.
 package active
 
 import (
@@ -32,6 +30,7 @@ type Config struct {
 	BlindXSS       string
 	ScreenshotTool string
 	WAFProbe       bool
+	WAFDeep        bool
 	Only           string
 	Skip           string
 	Resume         bool
@@ -40,7 +39,7 @@ type Config struct {
 }
 
 // pipeline is the fixed phase order --only/--skip select from.
-var pipeline = []string{"probe", "ports", "screenshots", "crawl", "wordlist", "fuzz", "sqli", "xss"}
+var pipeline = []string{"probe", "ports", "screenshots", "crawl", "jsintel", "wordlist", "fuzz", "sqli", "xss"}
 
 func (c Config) wants(phase string) bool {
 	if c.Only != "" {
@@ -81,6 +80,9 @@ func Run(target string, lay *output.Layout, cfg Config) error {
 			// profile in place. Sketched here rather than wired end-to-end.
 		}
 	}
+	if cfg.WAFDeep && !cfg.DryRun {
+		runWAFDeep(target, lay)
+	}
 
 	for _, phase := range pipeline {
 		if !cfg.wants(phase) {
@@ -94,13 +96,15 @@ func Run(target string, lay *output.Layout, cfg Config) error {
 		var err error
 		switch phase {
 		case "probe":
-			err = fmt.Errorf("TODO: httprobe-equivalent liveness check -> lay.Hosts")
+			err = runProbe(target, lay, cfg)
 		case "ports":
-			err = fmt.Errorf("TODO: naabu wrapper (respecting cfg.Ports) -> lay.Ports")
+			err = runPorts(target, lay, cfg)
 		case "screenshots":
 			err = fmt.Errorf("TODO: shell out to cfg.ScreenshotTool -> lay.Screenshots")
 		case "crawl":
-			err = fmt.Errorf("TODO: live URL harvest (katana/gau over live hosts) -> lay.URLs")
+			err = runCrawl(target, lay, cfg)
+		case "jsintel":
+			err = runJSIntel(target, lay, cfg)
 		case "wordlist":
 			err = fmt.Errorf("TODO: unfurl-equivalent path/param extraction from lay.URLs -> lay.PathWordlist / lay.ParamWordlist")
 		case "fuzz":

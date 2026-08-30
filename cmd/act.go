@@ -14,6 +14,7 @@ import (
 	"github.com/Mohamed-Newish/sharingan-go/internal/output"
 	"github.com/Mohamed-Newish/sharingan-go/internal/scope"
 	"github.com/Mohamed-Newish/sharingan-go/internal/stealth"
+	"github.com/Mohamed-Newish/sharingan-go/internal/store"
 )
 
 func runAct(args []string) int {
@@ -26,7 +27,10 @@ func runAct(args []string) int {
 	concurrency := fs.Int("concurrency", 0, "override the profile's worker-pool size (0 = use profile default)")
 	ja3 := fs.String("ja3", "chrome", "TLS fingerprint to present: chrome | firefox | off")
 	wafProbe := fs.Bool("waf-probe", true, "fingerprint the WAF before scanning and auto-tune throttling")
+	wafDeep := fs.Bool("waf-deep", false, "also run wafw00f for report-quality vendor ID (extra requests, opt-in)")
 	proxy := fs.String("proxy", "", "upstream proxy URL (http/socks5)")
+	proxyPool := fs.String("proxy-pool", "", "file of proxy URLs (one per line) to rotate egress IP across on a block")
+	confirmRotation := fs.Bool("confirm-rotation-permitted", false, "required alongside --proxy-pool: you've checked the program's rules of engagement permit IP rotation")
 	ports := fs.String("ports", "top-1000", "port range/list for the port-scan phase")
 	wordlist := fs.String("wordlist", "", "seed wordlist for the fuzz phase, merged with the auto-derived path/param lists")
 	blindXSS := fs.String("blind-xss", "", "your blind-XSS collector URL — the xss phase refuses to run without one")
@@ -68,10 +72,35 @@ func runAct(args []string) int {
 		return 2
 	}
 
-	client, err := stealth.NewClient(prof, *ja3)
+	if *proxyPool != "" && *proxy != "" {
+		fmt.Fprintln(os.Stderr, "sharingan act: --proxy and --proxy-pool are mutually exclusive")
+		return 2
+	}
+	if *proxyPool != "" && !*confirmRotation {
+		fmt.Fprintln(os.Stderr, "sharingan act: --proxy-pool requires --confirm-rotation-permitted — "+
+			"check the program's rules of engagement allow testing from rotating IPs before enabling this; "+
+			"many explicitly require a single, consistent, disclosed IP")
+		return 2
+	}
+
+	client, err := stealth.NewClient(prof, *ja3, *proxy)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "sharingan act:", err)
 		return 2
+	}
+	if *proxyPool != "" {
+		proxies, err := store.ReadLines(*proxyPool)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "sharingan act: --proxy-pool:", err)
+			return 2
+		}
+		pool, err := stealth.NewProxyPool(proxies, prof.CooldownAfter)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "sharingan act: --proxy-pool:", err)
+			return 2
+		}
+		client.UseProxyPool(pool)
+		fmt.Fprintf(os.Stderr, "sharingan act: rotating egress across %d proxies (confirmed permitted)\n", len(proxies))
 	}
 
 	cfg := active.Config{
@@ -84,6 +113,7 @@ func runAct(args []string) int {
 		BlindXSS:       *blindXSS,
 		ScreenshotTool: *screenshotTool,
 		WAFProbe:       *wafProbe,
+		WAFDeep:        *wafDeep,
 		Only:           g.Only,
 		Skip:           g.Skip,
 		Resume:         g.Resume,
