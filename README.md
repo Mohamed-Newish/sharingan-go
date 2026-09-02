@@ -204,7 +204,7 @@ the next pick, round-robin across the rest.
 | `-t, --target <domain>` | — | single target |
 | `-l, --list <file>` | — | scope file, one target per line, `*.example.com` wildcards |
 | `-o, --out <dir>` | `targets` | output root; writes to `<out>/<target>/` |
-| `-c, --config <file>` | — | API keys / custom profiles (`key: value` format) |
+| `-c, --config <file>` | `~/.config/sharingan/config` | API keys / custom profiles (`key: value` format). Read automatically when unset — drop `shodan: <key>` in the default path once and every run picks it up. |
 | `--only <phases>` | — | comma list: run just these phases |
 | `--skip <phases>` | — | comma list: skip these phases |
 | `--resume` | off | skip phases whose output file is already non-empty |
@@ -361,8 +361,12 @@ scope) to test.
    catch), so there was nothing safe to sweep for a full run. Needs a
    target whose ASN is actually its own, not a shared CDN/cloud
    provider's.
-3. Thread `internal/config`'s API keys into the
-   `securitytrails`/`censys`/`shodan`/`github` passive sources.
+3. Thread the remaining `internal/config` API-key sources
+   (`securitytrails`/`censys`/`github`) into `psv`. **`shodan` is done** —
+   `psv --sources shodan` queries Shodan's DNS domain index natively, and
+   `origin` falls back to the config's `shodan:` key when `--shodan-key`
+   is unset. The config file is now read automatically from
+   `~/.config/sharingan/config`.
 4. Swap `stealth.Client`'s transport for a real `utls`-based one so
    `--ja3` actually spoofs a Chrome/Firefox TLS ClientHello.
 5. Once a WAF vendor is identified pre-scan, actually rebuild the

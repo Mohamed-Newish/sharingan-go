@@ -4,13 +4,17 @@
 // third-party dependency needed for something this small, keeping the
 // whole tool a single static binary with no external module graph.
 //
-// Not yet threaded through cmd/ — psv's api-key sources (securitytrails,
-// censys, shodan, github) currently error out with a TODO pointing here.
+// Threaded through cmd/: psv loads it and hands APIKeys to the passive
+// sources, and origin falls back to APIKeys["shodan"] when --shodan-key
+// isn't passed. With no -c/--config flag, DefaultPath() is used, so a
+// key dropped once into ~/.config/sharingan/config is picked up by every
+// run with no flags.
 package config
 
 import (
 	"bufio"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -19,11 +23,26 @@ type Config struct {
 	APIKeys map[string]string // e.g. "shodan" -> key, "securitytrails" -> key
 }
 
+// DefaultPath is where sharingan looks when no -c/--config is given:
+// ~/.config/sharingan/config. Returns "" if the home dir can't be
+// resolved (then Load just yields an empty Config).
+func DefaultPath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".config", "sharingan", "config")
+}
+
 // Load reads path in "key: value" form, one per line ("#" comments and
-// blank lines ignored). A missing path is not an error — it just yields
-// an empty Config, since --config is optional.
+// blank lines ignored). An empty path falls back to DefaultPath(). A
+// missing file is not an error — it just yields an empty Config, since
+// the config is optional.
 func Load(path string) (*Config, error) {
 	cfg := &Config{APIKeys: map[string]string{}}
+	if path == "" {
+		path = DefaultPath()
+	}
 	if path == "" {
 		return cfg, nil
 	}

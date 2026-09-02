@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Mohamed-Newish/sharingan-go/internal/config"
 	"github.com/Mohamed-Newish/sharingan-go/internal/origin"
 	"github.com/Mohamed-Newish/sharingan-go/internal/output"
 	"github.com/Mohamed-Newish/sharingan-go/internal/stealth"
@@ -23,7 +24,9 @@ func runOrigin(args []string) int {
 	fs.StringVar(target, "target", "", "target domain")
 	out := fs.String("o", "targets", "output root directory")
 	fs.StringVar(out, "out", "targets", "output root directory")
-	shodanKey := fs.String("shodan-key", "", "Shodan API key (optional — naabu-only works without it, Shodan just adds cross-reference candidates)")
+	shodanKey := fs.String("shodan-key", "", "Shodan API key (optional — naabu-only works without it, Shodan just adds cross-reference candidates; falls back to the config file's `shodan:` key when unset)")
+	cfgPath := fs.String("c", "", "config file (API keys); defaults to ~/.config/sharingan/config")
+	fs.StringVar(cfgPath, "config", "", "config file (API keys); defaults to ~/.config/sharingan/config")
 	ports := fs.String("ports", "80,443", "ports to check per candidate IP")
 	profileName := fs.String("profile", "ninja", "stealth profile driving naabu's -rate/-c (default ninja: this sweeps a whole CIDR, be conservative)")
 	maxCIDRSize := fs.Int("max-cidr-size", 12, "skip any CIDR bigger than 2^n hosts (default 4096) — the safety cap against sweeping shared-hosting ranges")
@@ -36,6 +39,17 @@ func runOrigin(args []string) int {
 		fmt.Fprintln(os.Stderr, "sharingan origin: -t <target> is required")
 		return 2
 	}
+	if *shodanKey == "" {
+		if cfg, err := config.Load(*cfgPath); err == nil {
+			if k := cfg.APIKeys["shodan"]; k != "" {
+				*shodanKey = k
+				if *verbose {
+					fmt.Println("origin: using Shodan key from config file")
+				}
+			}
+		}
+	}
+
 	if !*confirmScope {
 		fmt.Fprintln(os.Stderr, "sharingan origin: --confirm-scope is required — this scans the target's "+
 			"entire ASN/CIDR range, not just the one domain. If that ASN is a shared hosting/cloud provider "+

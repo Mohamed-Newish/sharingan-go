@@ -10,7 +10,9 @@ package passive
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"os/exec"
 	"strings"
 	"time"
@@ -23,7 +25,7 @@ import (
 // every result to lay.Domains (subdomain sources) or lay.URLs (archive
 // sources — wayback/gau/otx query a third-party archive, not the
 // target, so they belong in passive mode).
-func Run(target string, lay *output.Layout, sources string, dryRun, verbose bool) error {
+func Run(target string, lay *output.Layout, sources string, apiKeys map[string]string, dryRun, verbose bool) error {
 	domains, err := store.Open(lay.Domains)
 	if err != nil {
 		return err
@@ -54,8 +56,15 @@ func Run(target string, lay *output.Layout, sources string, dryRun, verbose bool
 			found, werr = shellOutLines("waybackurls", target)
 		case "gau":
 			found, werr = shellOutLines("gau", target)
-		case "otx", "securitytrails", "censys", "shodan", "github":
-			werr = fmt.Errorf("source %q needs an API key — TODO: wire internal/config.Config.APIKeys through here", src)
+		case "shodan":
+			if key := apiKeys["shodan"]; key != "" {
+				found, werr = shodanSubdomains(key, target)
+			} else {
+				werr = fmt.Errorf("source %q needs an API key — set `shodan: <key>` in your sharingan config "+
+					"(~/.config/sharingan/config, or pass -c <file>)", src)
+			}
+		case "otx", "securitytrails", "censys", "github":
+			werr = fmt.Errorf("source %q needs an API key and isn't wired yet — only `shodan` is implemented so far", src)
 		default:
 			werr = fmt.Errorf("unknown passive source %q", src)
 		}
@@ -111,6 +120,46 @@ func crtsh(target string) ([]string, error) {
 				seen[name] = true
 				out = append(out, name)
 			}
+		}
+	}
+	return out, nil
+}
+
+// shodanSubdomains queries Shodan's DNS domain endpoint for a target's
+// known subdomains — a request to Shodan's index, never to the target
+// itself, so it's safe in passive mode. Costs one Shodan query credit
+// per call. Returns fully-qualified hostnames (sub + "." + domain).
+func shodanSubdomains(apiKey, domain string) ([]string, error) {
+	u := fmt.Sprintf("https://api.shodan.io/dns/domain/%s?key=%s",
+		url.PathEscape(domain), url.QueryEscape(apiKey))
+	c := &http.Client{Timeout: 25 * time.Second}
+	resp, err := c.Get(u)
+	if err != nil {
+		return nil, fmt.Errorf("shodan: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return nil, fmt.Errorf("shodan: status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	var r struct {
+		Subdomains []string `json:"subdomains"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
+		return nil, fmt.Errorf("shodan: %w", err)
+	}
+	seen := map[string]bool{}
+	var out []string
+	for _, s := range r.Subdomains {
+		s = strings.ToLower(strings.TrimSpace(s))
+		if s == "" {
+			continue
+		}
+		host := s + "." + domain
+		if !seen[host] {
+			seen[host] = true
+			out = append(out, host)
 		}
 	}
 	return out, nil

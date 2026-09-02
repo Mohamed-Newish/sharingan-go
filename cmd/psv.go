@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Mohamed-Newish/sharingan-go/internal/config"
 	"github.com/Mohamed-Newish/sharingan-go/internal/output"
 	"github.com/Mohamed-Newish/sharingan-go/internal/passive"
 )
@@ -27,13 +28,19 @@ func runPsv(args []string) int {
 		return 2
 	}
 
+	cfg, err := config.Load(g.Config)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "sharingan psv: config:", err)
+		return 2
+	}
+
 	for _, t := range targets {
 		lay, err := output.New(g.Out, t)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "sharingan psv:", err)
 			return 1
 		}
-		if err := passive.Run(t, lay, *sources, g.DryRun, g.Verbose); err != nil {
+		if err := passive.Run(t, lay, *sources, cfg.APIKeys, g.DryRun, g.Verbose); err != nil {
 			fmt.Fprintf(os.Stderr, "sharingan psv: %s: %v\n", t, err)
 		}
 	}
